@@ -1,0 +1,1721 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مدیریت آرایشگاه (Supabase Realtime)</title>
+  <!-- کتابخانه Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- کتابخانه‌های اکسل و تاریخ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+  <style>
+    body { font-family: tahoma, sans-serif; background: #e0e5ec; text-align: center; margin: 0; padding: 10px; }
+    .box { background: white; width: 90%; max-width: 450px; margin: 20px auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+    input, select, button { width: 90%; padding: 12px; margin: 6px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: inherit; }
+    button { background: #222; color: white; cursor: pointer; border: none; font-weight: bold; }
+    button:hover { opacity: 0.9; }
+    .card { padding: 12px; margin: 10px 0; border-radius: 10px; text-align: right; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .hide { display: none; }
+    .btn-small { width: auto; padding: 8px 15px; margin: 5px; font-size: 14px; display: inline-block; }
+    .flex { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+    .loading { color: #666; font-size: 16px; padding: 20px; }
+    .error { color: #c62828; background: #ffebee; border: 1px solid #ffcdd2; padding: 10px; border-radius: 8px; }
+    .badge-disabled { background: #e53935; color: white; font-size: 11px; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-right: 5px; }
+
+    /* استایل دکمه‌های مثبت و چک باکس برای تعداد خدمات */
+    .service-counter-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f8e9;
+      border: 1px solid #c5e1a5;
+      padding: 10px 14px;
+      margin: 6px 0;
+      border-radius: 10px;
+    }
+    .service-info {
+      text-align: right;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .service-info strong {
+      display: block;
+      color: #2e7d32;
+      font-size: 14px;
+    }
+    .service-info span {
+      font-size: 12px;
+      color: #666;
+    }
+    .service-checkbox {
+      width: 20px !important;
+      height: 20px !important;
+      margin: 0 !important;
+      cursor: pointer;
+    }
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .qty-btn {
+      width: 34px !important;
+      height: 34px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 6px !important;
+      font-size: 18px !important;
+      font-weight: bold !important;
+      line-height: 1 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      user-select: none;
+    }
+    .qty-btn-plus { background: #43a047 !important; color: white !important; }
+    .qty-btn-minus { background: #e53935 !important; color: white !important; }
+    .qty-input {
+      width: 40px !important;
+      height: 34px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      text-align: center !important;
+      font-weight: bold !important;
+      font-size: 15px !important;
+      background: #fff !important;
+      border: 1px solid #bbb !important;
+      border-radius: 6px !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box" id="loginBox" style="border: 2px solid #3f51b5; background: #f3f4fa;">
+  <h2 style="color: #3f51b5;">💈 مدیریت آرایشگاه</h2>
+  <select id="role">
+    <option value="manager">مدیر</option>
+    <option value="barber">آرایشگر</option>
+  </select>
+  <input id="username" placeholder="نام کاربری">
+  <input id="password" type="password" placeholder="رمز عبور">
+  <button onclick="login()" style="background: #3f51b5;">ورود</button>
+  <p id="loginMsg" style="color:red;"></p>
+</div>
+
+<div class="box hide" id="managerBox" style="border: 2px solid #00695c; background: #f0f7f5;">
+  <h2 style="color: #00695c;">داشبورد مدیر</h2>
+  <div id="managerContent"></div>
+  <button onclick="logout()" style="background: #c62828; margin-top: 15px;">خروج</button>
+</div>
+
+<div class="box hide" id="barberBox" style="border: 2px solid #e65100; background: #fff8f5;">
+  <h2 style="color: #e65100;">داشبورد آرایشگر</h2>
+  <div id="barberContent"></div>
+  <button onclick="logout()" style="background: #c62828; margin-top: 15px;">خروج</button>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://wguzfsmcgyhepmcjscsa.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_j3Ek16aqSiSxhIlDP9aYkw_BWfx-_nk";
+
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const DEFAULT_USERS = [
+    { name: "مدیر", username: "admin", password: "12345", role: "manager", active: true },
+    { name: "مجید", password: "1234", role: "barber", active: true },
+    { name: "علی", password: "2222", role: "barber", active: true },
+    { name: "محمد رضا", password: "3333", role: "barber", active: true },
+    { name: "محمد امین", password: "4444", role: "barber", active: true },
+    { name: "محمد طاها", password: "5555", role: "barber", active: true },
+    { name: "آریا", password: "1111", role: "barber", active: true }
+  ];
+
+  function getUsers() {
+    const local = localStorage.getItem("salon_users");
+    if (local) {
+      try { 
+        const users = JSON.parse(local);
+        return users.map(u => ({ ...u, active: u.active !== false }));
+      } catch(e){}
+    }
+    localStorage.setItem("salon_users", JSON.stringify(DEFAULT_USERS));
+    return DEFAULT_USERS;
+  }
+
+  function saveUsers(users) {
+    localStorage.setItem("salon_users", JSON.stringify(users));
+  }
+
+  let currentUser = null;
+  let realtimeChannel = null;
+  let adminSyncChannel = null;
+
+  /* مدیریت تیک چک‌باکس و فعال/غیرفعال‌سازی اینپوت‌ها */
+  function toggleServiceCheck(checkboxId, inputId) {
+    const chk = document.getElementById(checkboxId);
+    const input = document.getElementById(inputId);
+    if (!chk || !input) return;
+
+    if (chk.checked) {
+      input.disabled = false;
+      if (parseInt(input.value) <= 0) {
+        input.value = 1;
+      }
+    } else {
+      input.disabled = true;
+      input.value = 0;
+    }
+  }
+
+  /* تابع افزودن تعداد خدمت با کلیک دکمه مثبت */
+  function addQty(checkboxId, inputId) {
+    const chk = document.getElementById(checkboxId);
+    const input = document.getElementById(inputId);
+    if (!chk || !input) return;
+
+    if (!chk.checked) {
+      chk.checked = true;
+      input.disabled = false;
+    }
+    let val = parseInt(input.value) || 0;
+    input.value = val + 1;
+  }
+
+  /* تابع کاهش تعداد خدمت با کلیک دکمه منفی */
+  function minusQty(checkboxId, inputId) {
+    const chk = document.getElementById(checkboxId);
+    const input = document.getElementById(inputId);
+    if (!chk || !input) return;
+
+    let val = parseInt(input.value) || 0;
+    if (val > 1) {
+      input.value = val - 1;
+    } else {
+      input.value = 0;
+      input.disabled = true;
+      chk.checked = false;
+    }
+  }
+
+  function playNotificationSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+  }
+
+  function requestNotificationPermission() {
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }
+
+  function sendPushNotification(title, body) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3655/3655581.png' });
+    }
+  }
+
+  async function getAdminCredentials() {
+    try {
+      const { data, error } = await supabaseClient.from("app_settings").select("*").eq("key", "admin_config").single();
+      if (data && data.value) {
+        return data.value;
+      }
+    } catch(e) {}
+    return { username: "admin", password: "12345" };
+  }
+
+  async function login() {
+    const role = document.getElementById("role").value;
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msg = document.getElementById("loginMsg");
+    msg.innerHTML = "در حال بررسی...";
+
+    if (role === "manager") {
+      const adminCreds = await getAdminCredentials();
+      if (username === adminCreds.username && password === adminCreds.password) {
+        currentUser = { name: "مدیر", username, password, role: "manager" };
+        requestNotificationPermission();
+        document.getElementById("loginBox").classList.add("hide");
+        document.getElementById("managerBox").classList.remove("hide");
+        loadManager();
+        listenAdminPasswordChange();
+        return;
+      } else {
+        msg.innerHTML = "نام کاربری یا رمز عبور مدیر اشتباه است";
+        return;
+      }
+    }
+
+    const users = getUsers();
+    let found = users.find(u => u.role === "barber" && u.name === username && u.password === password);
+
+    if (!found) {
+      msg.innerHTML = "نام یا رمز اشتباه است";
+      return;
+    }
+
+    if (found.active === false) {
+      msg.innerHTML = "⚠️ حساب کاربری شما غیرفعال شده است. لطفا با مدیر تماس بگیرید.";
+      return;
+    }
+
+    currentUser = found;
+    document.getElementById("loginBox").classList.add("hide");
+    document.getElementById("barberBox").classList.remove("hide");
+    loadBarber();
+  }
+
+  function logout() { 
+    if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+    if (adminSyncChannel) supabaseClient.removeChannel(adminSyncChannel);
+    location.reload(); 
+  }
+
+  function listenAdminPasswordChange() {
+    adminSyncChannel = supabaseClient
+      .channel('public:app_settings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.admin_config' }, payload => {
+        const newVal = payload.new ? payload.new.value : null;
+        if (newVal && currentUser && currentUser.role === "manager") {
+          if (newVal.username !== currentUser.username || newVal.password !== currentUser.password) {
+            alert("⚠️ رمز یا اطلاعات ورود مدیر توسط دستگاه دیگری تغییر یافت. لطفا مجدداً وارد شوید.");
+            logout();
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  function openBarberManagement() {
+    const container = document.getElementById("managerContent");
+    const users = getUsers();
+    const barbers = users.filter(u => u.role === "barber");
+
+    let listHtml = "";
+    barbers.forEach((b) => {
+      const isInactive = b.active === false;
+      listHtml += `
+        <div class="card" style="background:${isInactive ? '#ffebee' : '#f3e5f5'}; border:1px solid ${isInactive ? '#ef9a9a' : '#ce93d8'}; margin-bottom:10px;">
+          <div style="font-weight:bold; font-size:16px; color:${isInactive ? '#c62828' : '#4a148c'}; margin-bottom:5px;">
+            💈 ${b.name}
+            ${isInactive ? '<span class="badge-disabled">غیرفعال</span>' : ''}
+          </div>
+          <div style="font-size:13px; color:#4a148c; margin-bottom:10px;">🔑 رمز عبور فعلی: <code>${b.password}</code></div>
+          <div class="flex">
+            <button onclick="editBarberName('${b.name}')" class="btn-small" style="background:#f57c00;">✏️ ویرایش نام</button>
+            <button onclick="editBarberPassword('${b.name}')" class="btn-small" style="background:#0288d1;">🔑 ویرایش رمز</button>
+            <button onclick="toggleBarberStatus('${b.name}')" class="btn-small" style="background:${isInactive ? '#2e7d32' : '#d32f2f'};">
+              ${isInactive ? '✅ فعال‌سازی' : '🚫 غیرفعال‌سازی ورود'}
+            </button>
+            <button onclick="executeDeleteBarber('${b.name}')" class="btn-small" style="background:#7f0000;">🗑️ حذف کامل و پاکسازی سوابق</button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <button onclick="renderManagerPending()" class="btn-small" style="background:#555;">🔙 بازگشت به داشبورد</button>
+      <div class="card" style="background:#f3e5f5; border:2px solid #ab47bc;">
+        <h3 style="color:#4a148c;">✂️ مدیریت آرایشگران</h3>
+        <button onclick="openAddBarberModal()" style="background:#6a1b9a; width:100%; margin-bottom:15px;">➕ افزودن آرایشگر جدید</button>
+        <div style="text-align:right;">
+          <strong style="color:#4a148c;">لیست آرایشگران:</strong>
+          ${listHtml || "<div style='color:#777; margin-top:10px;'>هیچ آرایشگری وجود ندارد</div>"}
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleBarberStatus(barberName) {
+    const users = getUsers();
+    const barber = users.find(u => u.name === barberName && u.role === "barber");
+    if (!barber) return;
+
+    const currentStatus = barber.active !== false;
+    const actionText = currentStatus ? "غیرفعال" : "فعال";
+
+    if (confirm(`آیا مطمئن هستید که می‌خواهید دسترسی ورود "${barberName}" را ${actionText} کنید؟`)) {
+      barber.active = !currentStatus;
+      saveUsers(users);
+      alert(`✅ دسترسی "${barberName}" با موفقیت ${actionText} شد.`);
+      openBarberManagement();
+    }
+  }
+
+  function openAddBarberModal() {
+    const name = prompt("نام آرایشگر جدید را وارد کنید:");
+    if (!name || !name.trim()) return;
+    const password = prompt("رمز عبور آرایشگر جدید را وارد کنید:");
+    if (!password || !password.trim()) return;
+
+    const users = getUsers();
+    if (users.some(u => u.name === name.trim() && u.role === "barber")) {
+      alert("⚠️ آرایشگری با این نام قبلاً وجود دارد");
+      return;
+    }
+
+    users.push({ name: name.trim(), password: password.trim(), role: "barber", active: true });
+    saveUsers(users);
+    alert("✅ آرایشگر جدید اضافه شد");
+    openBarberManagement();
+  }
+
+  async function editBarberName(oldName) {
+    const users = getUsers();
+    const barber = users.find(u => u.name === oldName && u.role === "barber");
+    if (!barber) return;
+
+    const newName = prompt("نام جدید آرایشگر را وارد کنید:", barber.name);
+    if (!newName || !newName.trim()) return;
+
+    const trimmedName = newName.trim();
+    if (trimmedName === oldName) return;
+
+    if (users.some(u => u.name === trimmedName && u.role === "barber")) {
+      alert("⚠️ این نام قبلاً برای آرایشگر دیگری انتخاب شده است");
+      return;
+    }
+
+    const uIdx = users.findIndex(u => u.name === oldName && u.role === "barber");
+    if (uIdx !== -1) {
+      users[uIdx].name = trimmedName;
+      saveUsers(users);
+    }
+
+    try {
+      await supabaseClient.from("works").update({ barber: trimmedName }).eq("barber", oldName);
+      await supabaseClient.from("payments").update({ barber: trimmedName }).eq("barber", oldName);
+    } catch(e) {
+      console.error("خطا در به‌روزرسانی سوابق آرایشگر:", e);
+    }
+
+    alert("✅ نام آرایشگر با موفقیت به‌روزرسانی شد");
+    openBarberManagement();
+  }
+
+  function editBarberPassword(barberName) {
+    const users = getUsers();
+    const barber = users.find(u => u.name === barberName && u.role === "barber");
+    if (!barber) return;
+
+    const newPassword = prompt(`رمز عبور جدید برای "${barberName}" را وارد کنید:`, barber.password);
+    if (!newPassword || !newPassword.trim()) return;
+
+    const uIdx = users.findIndex(u => u.name === barberName && u.role === "barber");
+    if (uIdx !== -1) {
+      users[uIdx].password = newPassword.trim();
+      saveUsers(users);
+    }
+
+    alert("✅ رمز عبور آرایشگر با موفقیت تغییر یافت");
+    openBarberManagement();
+  }
+
+  async function executeDeleteBarber(barberName) {
+    if (!confirm(`🚨 هشدار شدید!\nآیا از حذف کامل "${barberName}" مطمئن هستید؟`)) return;
+
+    const users = getUsers();
+    const updatedUsers = users.filter(u => !(u.name === barberName && u.role === "barber"));
+    saveUsers(updatedUsers);
+
+    try {
+      await supabaseClient.from("works").delete().eq("barber", barberName);
+      await supabaseClient.from("payments").delete().eq("barber", barberName);
+    } catch(e) {
+      console.error("خطا در حذف کارهای دیتابیس:", e);
+    }
+
+    alert("🗑️ آرایشگر و تمامی سوابق او به‌طور کامل پاک شدند");
+    openBarberManagement();
+  }
+
+  async function openServiceManagement() {
+    const container = document.getElementById("managerContent");
+    container.innerHTML = '<div class="loading">⏳ در حال بارگذاری خدمات...</div>';
+
+    const services = await getServices();
+    let servicesHtml = "";
+
+    services.forEach((s, index) => {
+      servicesHtml += `
+        <div class="card" style="background:#fce4ec; border:1px solid #f8bbd0; margin-bottom:8px;">
+          <div style="font-weight:bold; font-size:15px; color:#880e4f;">✓ ${s.name}</div>
+          <div style="color:#c2185b; font-size:14px; margin:4px 0;">💰 ${s.price.toLocaleString()} تومان</div>
+          <div class="flex">
+            <button onclick="editServiceNameOnly(${index})" class="btn-small" style="background:#f57c00;">✏️ ویرایش نام</button>
+            <button onclick="editServicePriceOnly(${index})" class="btn-small" style="background:#0288d1;">💰 ویرایش قیمت</button>
+            <button onclick="deleteSingleService(${index})" class="btn-small" style="background:#c62828;">🗑️ حذف</button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <button onclick="renderManagerPending()" class="btn-small" style="background:#555;">🔙 بازگشت به داشبورد</button>
+      <div class="card" style="background:#fce4ec; border:2px solid #ec407a;">
+        <h3 style="color:#880e4f;">✂️ مدیریت خدمات سالن</h3>
+        <button onclick="addNewServicePrompt()" style="background:#c2185b; width:100%; margin-bottom:15px;">➕ افزودن خدمت جدید</button>
+        <div style="text-align:right;">
+          <strong style="color:#880e4f;">لیست خدمات فعال:</strong>
+          ${servicesHtml || "<div style='color:#777; margin-top:10px;'>هیچ خدمتی وجود ندارد</div>"}
+        </div>
+      </div>
+    `;
+  }
+
+  async function addNewServicePrompt() {
+    const name = prompt("نام خدمت جدید را وارد کنید:");
+    if (!name || !name.trim()) return;
+    const price = prompt("قیمت خدمت (تومان):");
+    if (!price || isNaN(Number(price))) return;
+
+    const list = await getServices();
+    list.push({ name: name.trim(), price: Number(price) });
+    if (await saveServices(list)) {
+      alert("✅ خدمت جدید اضافه شد");
+      openServiceManagement();
+    }
+  }
+
+  async function editServiceNameOnly(index) {
+    const list = await getServices();
+    if (!list[index]) return;
+
+    const current = list[index];
+    const newName = prompt("نام جدید خدمت را وارد کنید:", current.name);
+    if (!newName || !newName.trim()) return;
+
+    list[index].name = newName.trim();
+    if (await saveServices(list)) {
+      alert("✅ نام خدمت با موفقیت به‌روزرسانی شد");
+      openServiceManagement();
+    }
+  }
+
+  async function editServicePriceOnly(index) {
+    const list = await getServices();
+    if (!list[index]) return;
+
+    const current = list[index];
+    const newPrice = prompt("قیمت جدید خدمت را وارد کنید (تومان):", current.price);
+    if (!newPrice || isNaN(Number(newPrice))) return;
+
+    list[index].price = Number(newPrice);
+    if (await saveServices(list)) {
+      alert("✅ قیمت خدمت با موفقیت به‌روزرسانی شد");
+      openServiceManagement();
+    }
+  }
+
+  async function deleteSingleService(index) {
+    const list = await getServices();
+    if (!list[index]) return;
+
+    if (confirm(`آیا از حذف خدمت "${list[index].name}" مطمئن هستید؟`)) {
+      list.splice(index, 1);
+      if (await saveServices(list)) {
+        alert("🗑️ خدمت حذف شد");
+        openServiceManagement();
+      }
+    }
+  }
+
+  async function editManagerCredentials() {
+    const currentAdmin = await getAdminCredentials();
+    const newUsername = prompt("نام کاربری جدید مدیر را وارد کنید:", currentAdmin.username);
+    if (!newUsername) return;
+    const newPassword = prompt("رمز عبور جدید مدیر را وارد کنید:", currentAdmin.password);
+    if (!newPassword) return;
+
+    const updatedConfig = { username: newUsername.trim(), password: newPassword.trim() };
+
+    try {
+      const { error } = await supabaseClient.from("app_settings").upsert({ key: "admin_config", value: updatedConfig });
+      if (error) throw error;
+      alert("✅ اطلاعات مدیر با موفقیت آنلاین به‌روزرسانی شد.\nتمامی گوشی‌های فعال اخراج می‌شوند تا با رمز جدید وارد شوند.");
+      logout();
+    } catch(e) {
+      alert("❌ خطا در ذخیره آنلاین اطلاعات مدیر: " + e.message);
+    }
+  }
+
+  const DEFAULT_SERVICES = [
+    { name: "اصلاح ساده", price: 300000 },
+    { name: "اصلاح مدل دار", price: 400000 },
+    { name: "سایه صفر", price: 500000 },
+    { name: "فید", price: 600000 },
+    { name: "صورت با ماشین", price: 100000 },
+    { name: "صورت با تیغ", price: 200000 },
+    { name: "صورت سایه", price: 150000 },
+    { name: "وکس", price: 150000 },
+    { name: "شستشو", price: 100000 },
+    { name: "سشوار", price: 150000 }
+  ];
+
+  async function getServices() {
+    try {
+      const { data } = await supabaseClient.from("services").select("list").eq("id", 1).single();
+      if (data && data.list && data.list.length > 0) return data.list;
+    } catch (e) {}
+    await saveServices(DEFAULT_SERVICES);
+    return DEFAULT_SERVICES;
+  }
+
+  async function saveServices(list) {
+    try {
+      const { error } = await supabaseClient.from("services").upsert({ id: 1, list: list });
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      alert("❌ خطا در ذخیره‌سازی: " + e.message);
+      return false;
+    }
+  }
+
+  function now() {
+    const d = new Date();
+    return {
+      date: d.toLocaleDateString("fa-IR"),
+      time: d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
+      dateKey: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")
+    };
+  }
+
+  function normalizeDate(d) {
+    if (!d) return "";
+    d = d.replace(/[۰-۹]/g, x => "۰۱۲۳۴۵۶۷۸۹".indexOf(x));
+    d = d.replace(/\//g, "-");
+    const p = d.split("-");
+    if (p.length === 3) { p[1] = p[1].padStart(2,"0"); p[2] = p[2].padStart(2,"0"); }
+    return p.join("-");
+  }
+
+  function toggleVisibility(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.toggle("hide");
+    }
+  }
+
+  async function saveWork() {
+    const services = await getServices();
+    const selected = [];
+    
+    services.forEach((s, i) => {
+      const chk = document.getElementById("serviceChk" + i);
+      const input = document.getElementById("serviceQty" + i);
+      if (chk && chk.checked) {
+        const qty = input ? parseInt(input.value) || 0 : 0;
+        if (qty > 0) {
+          selected.push({
+            name: qty > 1 ? `${s.name} (x${qty})` : s.name,
+            price: s.price * qty
+          });
+        }
+      }
+    });
+
+    const extraAmountInput = document.getElementById("extraAmount");
+    const extraAmount = extraAmountInput ? Number(extraAmountInput.value) || 0 : 0;
+
+    if (selected.length === 0 && extraAmount === 0) { 
+      alert("لطفاً حداقل یک خدمت را تیک بزنید یا مبلغ اضافی وارد کنید"); 
+      return; 
+    }
+    
+    if (extraAmount > 0) {
+      selected.push({ name: "مبلغ اضافی / انعام", price: extraAmount });
+    }
+
+    const total = selected.reduce((sum, s) => sum + s.price, 0);
+    const n = now();
+    const work = {
+      barber: currentUser.name,
+      services: selected,
+      total: total,
+      date: n.date,
+      date_key: n.dateKey,
+      time: n.time,
+      status: "pending"
+    };
+    
+    try {
+      const { error } = await supabaseClient.from("works").insert([work]);
+      if (error) throw error;
+      alert("✅ ثبت شد\n" + total.toLocaleString() + " تومان (در انتظار تأیید مدیر)");
+      loadBarber();
+    } catch(e) {
+      alert("❌ خطا در ثبت: " + e.message);
+    }
+  }
+
+  async function openRegisterWorkForBarber() {
+    const container = document.getElementById("managerContent");
+    container.innerHTML = '<div class="loading">⏳ در حال بارگذاری...</div>';
+
+    try {
+      const activeBarbers = getUsers().filter(u => u.role === "barber" && u.active !== false);
+      const services = await getServices();
+
+      let barberOptions = "";
+      activeBarbers.forEach(b => barberOptions += `<option value="${b.name}">${b.name}</option>`);
+
+      let servicesHtml = "";
+      services.forEach((s, i) => {
+        servicesHtml += `
+          <div class="service-counter-card" style="background:#e3f2fd; border:1px solid #90caf9;">
+            <div class="service-info">
+              <input type="checkbox" id="mgrServiceChk${i}" class="service-checkbox" onchange="toggleServiceCheck('mgrServiceChk${i}', 'mgrServiceQty${i}')">
+              <div>
+                <strong style="color:#0d47a1;">${s.name}</strong>
+                <span>${s.price.toLocaleString()} تومان</span>
+              </div>
+            </div>
+            <div class="qty-controls">
+              <button type="button" class="qty-btn qty-btn-minus" onclick="minusQty('mgrServiceChk${i}', 'mgrServiceQty${i}')">-</button>
+              <input type="number" id="mgrServiceQty${i}" class="qty-input" value="0" min="1" disabled>
+              <button type="button" class="qty-btn qty-btn-plus" onclick="addQty('mgrServiceChk${i}', 'mgrServiceQty${i}')">+</button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = `
+        <button onclick="renderManagerPending()" class="btn-small" style="background:#555;">🔙 بازگشت به داشبورد</button>
+        <div class="card" style="background:#e0f7fa; border: 2px solid #00acc1; margin-top:10px;">
+          <h3 style="color:#006064;">✍️ ثبت کار برای آرایشگر</h3>
+          <label><strong style="color:#006064;">انتخاب آرایشگر:</strong></label>
+          <select id="mgrTargetBarber" style="margin-top:5px; margin-bottom:15px;">
+            ${barberOptions || '<option value="">هیچ آرایشگر فعالی وجود ندارد</option>'}
+          </select>
+          
+          <div style="text-align:right;">
+            <strong style="color:#006064;">انتخاب خدمات:</strong>
+            ${servicesHtml}
+          </div>
+
+          <div class="card" style="background:#e8f5e9; border:1px solid #a5d6a7; margin-top:10px;">
+            <label><strong style="color:#1b5e20;">➕ مبلغ اضافی / انعام (تومان):</strong></label>
+            <input type="number" id="mgrExtraAmount" placeholder="مثلاً ۵۰,۰۰۰" style="margin-top:8px;">
+          </div>
+
+          <button onclick="saveWorkByManager()" style="background:#00838f; margin-top:10px;">✅ ثبت کار برای آرایشگر</button>
+        </div>
+      `;
+    } catch(e) {
+      alert("❌ خطا: " + e.message);
+      renderManagerPending();
+    }
+  }
+
+  async function saveWorkByManager() {
+    const targetBarber = document.getElementById("mgrTargetBarber").value;
+    if (!targetBarber) {
+      alert("لطفاً یک آرایشگر انتخاب کنید");
+      return;
+    }
+
+    const services = await getServices();
+    const selected = [];
+    
+    services.forEach((s, i) => {
+      const chk = document.getElementById("mgrServiceChk" + i);
+      const input = document.getElementById("mgrServiceQty" + i);
+      if (chk && chk.checked) {
+        const qty = input ? parseInt(input.value) || 0 : 0;
+        if (qty > 0) {
+          selected.push({
+            name: qty > 1 ? `${s.name} (x${qty})` : s.name,
+            price: s.price * qty
+          });
+        }
+      }
+    });
+
+    const extraAmountInput = document.getElementById("mgrExtraAmount");
+    const extraAmount = extraAmountInput ? Number(extraAmountInput.value) || 0 : 0;
+
+    if (selected.length === 0 && extraAmount === 0) { 
+      alert("لطفاً حداقل یک خدمت را تیک بزنید یا مبلغ اضافی انتخاب کنید"); 
+      return; 
+    }
+    
+    if (extraAmount > 0) {
+      selected.push({ name: "مبلغ اضافی / انعام", price: extraAmount });
+    }
+
+    const total = selected.reduce((sum, s) => sum + s.price, 0);
+    const n = now();
+    
+    const work = {
+      barber: targetBarber,
+      services: selected,
+      total: total,
+      date: n.date,
+      date_key: n.dateKey,
+      time: n.time,
+      status: "approved"
+    };
+    
+    try {
+      const { error } = await supabaseClient.from("works").insert([work]);
+      if (error) throw error;
+      alert("✅ کار با موفقیت برای " + targetBarber + " ثبت و تأیید شد\nمبلغ: " + total.toLocaleString() + " تومان");
+      renderManagerPending();
+    } catch(e) {
+      alert("❌ خطا در ثبت: " + e.message);
+    }
+  }
+
+  async function getBarberWorks(barberName, status = null) {
+    try {
+      let query = supabaseClient.from("works").select("*").eq("barber", barberName);
+      if (status) query = query.eq("status", status);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch(e) { return []; }
+  }
+
+  async function getAllWorks(status = null) {
+    try {
+      let query = supabaseClient.from("works").select("*");
+      if (status) query = query.eq("status", status);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch(e) { return []; }
+  }
+
+  async function approveWork(workId, approve) {
+    try {
+      const status = approve ? "approved" : "rejected";
+      const { error } = await supabaseClient.from("works").update({ status }).eq("id", workId);
+      if (error) throw error;
+      renderManagerPending();
+    } catch(e) {
+      alert("❌ خطا: " + e.message);
+    }
+  }
+
+  async function approveAllPendingWorks() {
+    if (!confirm("آیا از تأیید همزمان و یکجای تمامی کارهای در انتظار اطمینان دارید؟")) return;
+    try {
+      const { error } = await supabaseClient.from("works").update({ status: "approved" }).eq("status", "pending");
+      if (error) throw error;
+      alert("✅ تمامی کارهای در انتظار با موفقیت تأیید شدند.");
+      renderManagerPending();
+    } catch(e) {
+      alert("❌ خطا در تأیید همزمان: " + e.message);
+    }
+  }
+
+  async function deleteWork(workId, refreshTarget = 'today') {
+    if (!confirm("آیا از حذف این کار ثبت‌شده اطمینان دارید؟")) return;
+    try {
+      const { error } = await supabaseClient.from("works").delete().eq("id", workId);
+      if (error) throw error;
+      alert("🗑️ کار با موفقیت حذف شد");
+      if (refreshTarget === 'today') openDailyReport();
+      else if (refreshTarget === 'overall') openOverallReport();
+    } catch(e) {
+      alert("❌ خطا در حذف کار: " + e.message);
+    }
+  }
+
+  async function reassignWork(workId, currentBarber, refreshTarget = 'today') {
+    const barbers = getUsers().filter(u => u.role === "barber" && u.name !== currentBarber);
+    let msg = "این کار مربوط به کدام آرایشگر است؟\n\n";
+    barbers.forEach((b, i) => msg += (i + 1) + ". " + b.name + "\n");
+    
+    const num = prompt(msg);
+    if (!num) return;
+    const idx = Number(num) - 1;
+    if (barbers[idx]) {
+      const newBarber = barbers[idx].name;
+      try {
+        const { error } = await supabaseClient.from("works").update({ barber: newBarber }).eq("id", workId);
+        if (error) throw error;
+        alert("✅ کار با موفقیت به " + newBarber + " منتقل شد");
+        if (refreshTarget === 'today') openDailyReport();
+        else if (refreshTarget === 'overall') openOverallReport();
+      } catch(e) {
+        alert("❌ خطا در ویرایش: " + e.message);
+      }
+    }
+  }
+
+  async function addPayment(barberName) {
+    const amount = prompt("مبلغ پرداختی به " + barberName + " را وارد کنید (تومان):");
+    if (!amount) return;
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert("لطفاً یک عدد معتبر وارد کنید");
+      return;
+    }
+    try {
+      const n = now();
+      const { error } = await supabaseClient.from("payments").insert([{
+        barber: barberName,
+        amount: numAmount,
+        type: "payment",
+        date: n.date,
+        time: n.time
+      }]);
+      if (error) throw error;
+      alert("✅ تسویه/پرداختی ثبت شد و از طلب آرایشگر کسر گردید.");
+      openOverallReport();
+    } catch(e) {
+      alert("❌ خطا: " + e.message);
+    }
+  }
+
+  async function addCredit(barberName) {
+    const amount = prompt("مبلغ اضافه بر طلب / پاداش برای " + barberName + " را وارد کنید (تومان):");
+    if (!amount) return;
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert("لطفاً یک عدد معتبر وارد کنید");
+      return;
+    }
+
+    const reason = prompt("علت اضافه شدن به طلب (مثلاً: پاداش، انعام، طلب قبلی):") || "افزایش طلب / پاداش";
+
+    try {
+      const n = now();
+      const { error } = await supabaseClient.from("payments").insert([{
+        barber: barberName,
+        amount: numAmount,
+        type: "credit",
+        reason: reason,
+        date: n.date,
+        time: n.time
+      }]);
+      if (error) throw error;
+      alert("➕ مبلغ " + numAmount.toLocaleString() + " تومان به طلب " + barberName + " اضافه شد.");
+      openOverallReport();
+    } catch(e) {
+      alert("❌ خطا در ثبت: " + e.message);
+    }
+  }
+
+  async function addPenalty(barberName) {
+    const amount = prompt("مبلغ جریمه برای " + barberName + " را وارد کنید (تومان):");
+    if (!amount) return;
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert("لطفاً یک عدد معتبر وارد کنید");
+      return;
+    }
+
+    const reason = prompt("علت جریمه (اختیاری):") || "جریمه انضباطی/کاری";
+
+    try {
+      const n = now();
+      const { error } = await supabaseClient.from("payments").insert([{
+        barber: barberName,
+        amount: -numAmount,
+        type: "penalty",
+        reason: reason,
+        date: n.date,
+        time: n.time
+      }]);
+      if (error) throw error;
+      alert("⚠️ جریمه به مبلغ " + numAmount.toLocaleString() + " تومان برای " + barberName + " ثبت شد و از طلب وی کسر گردید.");
+      openOverallReport();
+    } catch(e) {
+      alert("❌ خطا در ثبت جریمه: " + e.message);
+    }
+  }
+
+  async function deletePayment(paymentId) {
+    if (!confirm("آیا از حذف این رکورد مالی اطمینان دارید؟")) return;
+    try {
+      const { error } = await supabaseClient.from("payments").delete().eq("id", paymentId);
+      if (error) throw error;
+      alert("🗑️ رکورد مالی با موفقیت حذف شد");
+      openOverallReport();
+    } catch(e) {
+      alert("❌ خطا در حذف رکورد: " + e.message);
+    }
+  }
+
+  async function getPayments(barberName = null) {
+    try {
+      let query = supabaseClient.from("payments").select("*");
+      if (barberName) query = query.eq("barber", barberName);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch(e) { return []; }
+  }
+
+  async function exportExcel() {
+    try {
+      const works = await getAllWorks("approved");
+      const payments = await getPayments();
+      
+      let rows1 = [["آرایشگر", "تاریخ", "ساعت", "خدمات", "مبلغ (تومان)"]];
+      works.forEach(w => {
+        rows1.push([w.barber, w.date, w.time, w.services.map(s => s.name).join(" - "), w.total]);
+      });
+
+      let rows2 = [["آرایشگر", "مبلغ", "نوع (تسویه/اضافه به طلب/جریمه)", "توضیحات", "تاریخ", "ساعت"]];
+      payments.forEach(p => {
+        let pType = p.type === "penalty" ? "جریمه" : (p.type === "credit" ? "افزایش طلب/پاداش" : "تسویه/پرداخت");
+        rows2.push([p.barber, Math.abs(p.amount), pType, p.reason || "", p.date || "", p.time || ""]);
+      });
+
+      let rows3 = [["آرایشگر", "سهم از کارکرد (۵۰٪)", "تسویه شده / کسورات", "افزایش طلب / پاداش", "مانده طلب"]];
+      const accountData = {};
+      
+      works.forEach(w => {
+        if (!accountData[w.barber]) accountData[w.barber] = { share: 0, paid: 0, credit: 0 };
+        accountData[w.barber].share += w.total * 0.5;
+      });
+      
+      payments.forEach(p => {
+        if (!accountData[p.barber]) accountData[p.barber] = { share: 0, paid: 0, credit: 0 };
+        if (p.type === "credit") {
+          accountData[p.barber].credit += p.amount;
+        } else if (p.type === "payment") {
+          accountData[p.barber].paid += p.amount;
+        } else if (p.type === "penalty") {
+          accountData[p.barber].paid += Math.abs(p.amount);
+        }
+      });
+
+      for (let b in accountData) {
+        const totalDebt = (accountData[b].share + accountData[b].credit) - accountData[b].paid;
+        rows3.push([b, accountData[b].share, accountData[b].paid, accountData[b].credit, totalDebt]);
+      }
+
+      const book = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows1), "گزارش کارها");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows2), "پرداختی‌ها و جریمه‌ها");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows3), "حساب آرایشگرها");
+      
+      const wbout = XLSX.write(book, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = blobUrl;
+      downloadLink.download = "گزارش_صندوق_آرایشگاه.xlsx";
+      
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+    } catch(e) {
+      alert("❌ خطا در ساخت اکسل: " + e.message);
+    }
+  }
+
+  async function loadManager() {
+    renderManagerPending();
+
+    if (!realtimeChannel) {
+      realtimeChannel = supabaseClient
+        .channel('public:works')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'works' }, payload => {
+          if (payload.new && payload.new.status === 'pending') {
+            playNotificationSound();
+            sendPushNotification("🔔 خدمت جدید در انتظار تأیید", `آرایشگر: ${payload.new.barber} - مبلغ: ${payload.new.total ? payload.new.total.toLocaleString() : 0} تومان`);
+          }
+          renderManagerPending();
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'works' }, () => {
+          renderManagerPending();
+        })
+        .subscribe();
+    }
+  }
+
+  async function renderManagerPending() {
+    const container = document.getElementById("managerContent");
+    try {
+      const users = getUsers();
+      const barbers = users.filter(u => u.role === "barber");
+      const activeBarbers = barbers.filter(u => u.active !== false);
+      const pending = await getAllWorks("pending");
+
+      const pendingClientsCount = pending.length;
+      const pendingTotalAmount = pending.reduce((sum, w) => sum + (w.total || 0), 0);
+
+      let html = `
+        <div class="card" style="background:#e8eaf6; border:1px solid #c5cae9; color:#1a237e;">
+          تعداد کل آرایشگرها: ${barbers.length} نفر (${activeBarbers.length} نفر فعال)
+        </div>
+        <div class="flex">
+          <button onclick="openRegisterWorkForBarber()" class="btn-small" style="background:#0288d1;">✍️ ثبت کار آرایشگر</button>
+          <button onclick="openDailyReport()" class="btn-small" style="background:#2e7d32;">☀️ کارکرد روزانه (امروز)</button>
+          <button onclick="openOverallReport()" class="btn-small" style="background:#1565c0;">🌍 کارکرد کلی (از ابتدا)</button>
+          <button onclick="openBarberManagement()" class="btn-small" style="background:#6a1b9a;">💈 مدیریت آرایشگران</button>
+          <button onclick="openServiceManagement()" class="btn-small" style="background:#c2185b;">✂️ مدیریت خدمات</button>
+          <button onclick="editManagerCredentials()" class="btn-small" style="background:#4a148c;">🔑 تغییر نام/رمز مدیر</button>
+          <button onclick="exportExcel()" class="btn-small" style="background:#2e7d32;">📤 خروجی اکسل</button>
+          <button onclick="renderManagerPending()" class="btn-small" style="background:#ef6c00;">🔄 به‌روزرسانی</button>
+        </div>
+        
+        <hr style="border-color:#b0bec5; margin:15px 0;">
+        
+        <div class="card" style="background:#fff3e0; border: 2px solid #ffb74d; text-align:right;">
+          <h4 style="margin-top:0; color:#e65100;">⏳ خلاصه موارد در انتظار تأیید</h4>
+          👥 <strong>مشتریان در انتظار تأیید:</strong> ${pendingClientsCount} نفر<br>
+          💰 <strong>مجموع کل مبلغ در انتظار:</strong> ${pendingTotalAmount.toLocaleString()} تومان
+          ${pendingClientsCount > 0 ? `
+            <div style="margin-top:10px;">
+              <button onclick="approveAllPendingWorks()" style="background:#2e7d32; width:100%; font-size:14px; padding:10px;">✅ تأیید همه موارد در انتظار (${pendingClientsCount} مورد)</button>
+            </div>
+          ` : ''}
+        </div>
+
+        <h4 style="color:#37474f;">📋 لیست کارهای در انتظار تأیید (${pendingClientsCount})</h4>
+      `;
+      
+      if (pending.length === 0) {
+        html += `<div class="card" style="background:#e8f5e9; border:1px solid #c8e6c9; color:#2e7d32;">✅ هیچ کاری در انتظار تأیید نیست</div>`;
+      } else {
+        pending.forEach(w => {
+          html += `
+            <div class="card" style="background:#fffde7; border:1px solid #fff59d; color:#f57f17;">
+              <strong>${w.barber}</strong> | ${w.date} ${w.time}<br>
+              ${w.services.map(s => s.name + (s.price ? " (" + s.price.toLocaleString() + ")" : "")).join(" - ")}<br>
+              💰 ${w.total.toLocaleString()} تومان<br>
+              <button onclick="approveWork(${w.id}, true)" class="btn-small" style="background:#2e7d32;">✅ تأیید</button>
+              <button onclick="approveWork(${w.id}, false)" class="btn-small" style="background:#c62828;">❌ رد</button>
+            </div>
+          `;
+        });
+      }
+      container.innerHTML = html;
+
+    } catch(e) {
+      container.innerHTML = `<div class="error">❌ خطا: ${e.message}<br><button onclick="renderManagerPending()">تلاش مجدد</button></div>`;
+    }
+  }
+
+  /* --- ۱. کادر مجزای کارکرد روزانه (امروز) --- */
+  async function openDailyReport() {
+    const container = document.getElementById("managerContent");
+    container.innerHTML = '<div class="loading">⏳ در حال بارگذاری کارکرد روزانه...</div>';
+    
+    try {
+      const today = new Date().toLocaleDateString("fa-IR");
+      const users = getUsers();
+      const barbers = users.filter(u => u.role === "barber");
+      const allWorks = await getAllWorks("approved");
+
+      let todayTotalMoney = 0, todayTotalServices = 0, todayTotalClients = 0;
+      const todayBarberData = {};
+
+      barbers.forEach(b => {
+        todayBarberData[b.name] = { money: 0, services: 0, count: 0, works: [] };
+      });
+
+      allWorks.forEach(w => {
+        if (w.date === today) {
+          todayTotalMoney += w.total;
+          todayTotalServices += w.services.length;
+          todayTotalClients++;
+
+          if (!todayBarberData[w.barber]) {
+            todayBarberData[w.barber] = { money: 0, services: 0, count: 0, works: [] };
+          }
+          todayBarberData[w.barber].money += w.total;
+          todayBarberData[w.barber].services += w.services.length;
+          todayBarberData[w.barber].count++;
+          todayBarberData[w.barber].works.push(w);
+        }
+      });
+
+      let tIndex = 0;
+      let barbersListHtml = "";
+      for (let bName in todayBarberData) {
+        tIndex++;
+        const tData = todayBarberData[bName];
+        const tShare = tData.money * 0.5;
+        const todayWorksContainerId = "todayWorks_" + tIndex;
+        const targetUser = barbers.find(u => u.name === bName);
+        const isInactive = targetUser && targetUser.active === false;
+
+        let todayWorksListHtml = "";
+        if (tData.works.length > 0) {
+          tData.works.forEach(w => {
+            todayWorksListHtml += `
+              <div style="font-size:12px; background:#f1f8e9; padding:6px; margin:4px 0; border-radius:5px; border:1px solid #c5e1a5; text-align:right;">
+                ✂️ ${w.services.map(s => s.name).join(" - ")} (${w.total.toLocaleString()} ت)<br>
+                <span style="color:#558b2f; font-size:11px;">⏰ ساعت: ${w.time}</span>
+                <div style="margin-top:4px;">
+                  <button onclick="reassignWork(${w.id}, '${bName}', 'today')" class="btn-small" style="background:#f57c00; padding:2px 6px; font-size:11px;">🔄 انتقال کار</button>
+                  <button onclick="deleteWork(${w.id}, 'today')" class="btn-small" style="background:#c62828; padding:2px 6px; font-size:11px;">🗑️ حذف کار</button>
+                </div>
+              </div>
+            `;
+          });
+        } else {
+          todayWorksListHtml = "<div style='font-size:12px; color:#777;'>امروز کاری ثبت نشده است</div>";
+        }
+
+        barbersListHtml += `
+          <div style="background:#f1f8e9; padding:10px; margin:8px 0; border-radius:8px; text-align:right; border-right: 5px solid #33691e; border:1px solid #dedede; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <strong style="color:#33691e;">💈 ${bName}</strong> ${isInactive ? '<span class="badge-disabled">غیرفعال</span>' : ''}<br>
+            🧾 مشتری امروز: ${tData.count} نفر | ✂️ خدمات: ${tData.services}<br>
+            💰 فروش امروز: <strong>${tData.money.toLocaleString()}</strong> تومان<br>
+            👤 سهم امروز آرایشگر (۵۰٪): <strong>${tShare.toLocaleString()}</strong> تومان
+            
+            <div style="margin-top:6px;">
+              <button onclick="toggleVisibility('${todayWorksContainerId}')" class="btn-small" style="background:#558b2f; width:100%; font-size:12px; padding:5px;">👁️ مشاهده / مخفی کارهای امروز (${tData.works.length})</button>
+              <div id="${todayWorksContainerId}" class="hide" style="margin-top:5px;">
+                ${todayWorksListHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <button onclick="renderManagerPending()" class="btn-small" style="background:#555;">🔙 بازگشت به داشبورد</button>
+        <div class="card" style="background:#e8f5e9; border: 2px solid #2e7d32; padding:15px; margin-top:10px;">
+          <h2 style="color:#1b5e20; margin-top:0;">☀️ کارکرد روزانه (امروز - ${today})</h2>
+          
+          <div style="background:#2e7d32; color:white; padding:12px; border-radius:10px; margin-bottom:15px; text-align:right;">
+            <strong style="font-size:16px;">📊 آمار کل فروش امروز سالن:</strong><br><br>
+            💰 <strong>فروش کل سالن امروز:</strong> ${todayTotalMoney.toLocaleString()} تومان<br>
+            👥 <strong>تعداد مشتریان امروز:</strong> ${todayTotalClients} نفر<br>
+            ✂️ <strong>تعداد خدمات ارائه شده امروز:</strong> ${todayTotalServices}<hr style="border-color:rgba(255,255,255,0.3);">
+            👤 <strong>مجموع سهم آرایشگرها از امروز (۵۰٪):</strong> ${(todayTotalMoney * 0.5).toLocaleString()} تومان<br>
+            🏢 <strong>سهم خالص سالن از امروز (۵۰٪):</strong> ${(todayTotalMoney * 0.5).toLocaleString()} تومان
+          </div>
+          
+          <h4 style="text-align:right; margin-bottom:10px; color:#1b5e20;">📋 کارکرد تفکیکی آرایشگران در امروز:</h4>
+          ${barbersListHtml}
+        </div>
+      `;
+
+    } catch(e) {
+      container.innerHTML = `<div class="error">❌ خطا: ${e.message}<br><button onclick="openDailyReport()">تلاش مجدد</button></div>`;
+    }
+  }
+
+  /* --- ۲. کادر مجزای کارکرد کلی (از ابتدا) --- */
+  async function openOverallReport() {
+    const container = document.getElementById("managerContent");
+    container.innerHTML = '<div class="loading">⏳ در حال بارگذاری کارکرد کلی...</div>';
+    
+    try {
+      const users = getUsers();
+      const barbers = users.filter(u => u.role === "barber");
+
+      let barberOptions = `<option value="all">همه آرایشگرها</option>`;
+      barbers.forEach(b => barberOptions += `<option value="${b.name}">${b.name} ${b.active === false ? '(غیرفعال)' : ''}</option>`);
+
+      const allWorks = await getAllWorks("approved");
+      const allPayments = await getPayments();
+
+      let totalMoney = 0, totalServicesCount = 0;
+      const totalBarberData = {};
+
+      barbers.forEach(b => {
+        totalBarberData[b.name] = { money: 0, services: 0, count: 0, works: [] };
+      });
+
+      allWorks.forEach(w => {
+        totalMoney += w.total;
+        totalServicesCount += w.services.length;
+
+        if (!totalBarberData[w.barber]) {
+          totalBarberData[w.barber] = { money: 0, services: 0, count: 0, works: [] };
+        }
+        totalBarberData[w.barber].money += w.total;
+        totalBarberData[w.barber].services += w.services.length;
+        totalBarberData[w.barber].count++;
+        totalBarberData[w.barber].works.push(w);
+      });
+
+      const paidMap = {};
+      const creditMap = {};
+      
+      allPayments.forEach(p => {
+        if (p.type === "credit") {
+          creditMap[p.barber] = (creditMap[p.barber] || 0) + p.amount;
+        } else if (p.type === "penalty") {
+          paidMap[p.barber] = (paidMap[p.barber] || 0) + Math.abs(p.amount);
+        } else {
+          paidMap[p.barber] = (paidMap[p.barber] || 0) + p.amount;
+        }
+      });
+
+      let barbersOverallHtml = "";
+      let index = 0;
+      for (let b in totalBarberData) {
+        index++;
+        const money = totalBarberData[b].money;
+        const workShare = money * 0.5;
+        const extraCredit = creditMap[b] || 0;
+        const totalShare = workShare + extraCredit;
+        
+        const paidAndDeducted = paidMap[b] || 0;
+        const debt = totalShare - paidAndDeducted;
+        
+        const targetUser = barbers.find(u => u.name === b);
+        const isInactive = targetUser && targetUser.active === false;
+        
+        const barberWorksList = totalBarberData[b].works;
+        let worksListHtml = "";
+        if (barberWorksList.length > 0) {
+          barberWorksList.forEach(w => {
+            worksListHtml += `
+              <div style="font-size:12px; background:#fff; padding:6px; margin:4px 0; border-radius:5px; text-align:right; border:1px solid #90caf9;">
+                ✂️ ${w.services.map(s => s.name).join(" - ")} (${w.total.toLocaleString()} ت)<br>
+                <span style="color:#1565c0; font-size:11px;">📅 ${w.date} - ⏰ ${w.time}</span>
+                <div style="margin-top:4px;">
+                  <button onclick="reassignWork(${w.id}, '${b}', 'overall')" class="btn-small" style="background:#f57c00; padding:2px 6px; font-size:11px;">🔄 انتقال کار</button>
+                  <button onclick="deleteWork(${w.id}, 'overall')" class="btn-small" style="background:#c62828; padding:2px 6px; font-size:11px;">🗑️ حذف کار</button>
+                </div>
+              </div>
+            `;
+          });
+        } else {
+          worksListHtml = "<div style='font-size:12px; color:#777;'>هیچ کاری ثبت نشده است</div>";
+        }
+
+        const barberPayments = allPayments.filter(p => p.barber === b);
+        let paymentsListHtml = "";
+        if (barberPayments.length > 0) {
+          barberPayments.forEach(p => {
+            let amountText = "";
+            let styleColor = "";
+
+            if (p.type === "credit") {
+              amountText = `➕ اضافه به طلب/پاداش: ${p.amount.toLocaleString()} تومان ${p.reason ? '(' + p.reason + ')' : ''}`;
+              styleColor = `color: #1565c0; font-weight: bold;`;
+            } else if (p.type === "penalty") {
+              amountText = `🚨 جریمه: ${Math.abs(p.amount).toLocaleString()} تومان ${p.reason ? '(' + p.reason + ')' : ''}`;
+              styleColor = `color: #d32f2f; font-weight: bold;`;
+            } else {
+              amountText = `💵 تسویه/پرداخت: ${p.amount.toLocaleString()} تومان`;
+              styleColor = `color: #2e7d32;`;
+            }
+
+            paymentsListHtml += `
+              <div style="font-size:12px; background:#fff; padding:5px; margin:3px 0; border-radius:5px; display:flex; justify-content:space-between; align-items:center; border:1px solid #90caf9;">
+                <span style="${styleColor}">${amountText} (${p.date || 'بدون تاریخ'})</span>
+                <button onclick="deletePayment(${p.id})" class="btn-small" style="background:#c62828; padding:2px 6px; font-size:11px;">🗑️ حذف</button>
+              </div>
+            `;
+          });
+        } else {
+          paymentsListHtml = "<div style='font-size:12px; color:#777;'>هیچ تراکنش مالی ثبت نشده است</div>";
+        }
+
+        const worksContainerId = "worksContainer_" + index;
+        const paymentsContainerId = "paymentsContainer_" + index;
+
+        barbersOverallHtml += `
+          <div class="card" style="background:${isInactive ? '#fff3f3' : '#e3f2fd'}; border:${isInactive ? '1px dashed #e53935' : '1px solid #90caf9'}; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color:#0d47a1;">💈 ${b} ${isInactive ? '<span class="badge-disabled">غیرفعال</span>' : ''}</h3>
+            ✂️ کل خدمات: ${totalBarberData[b].services}<br>
+            🧾 کل مشتریان: ${totalBarberData[b].count}<br>
+            💰 کل فروش کارکرد: ${money.toLocaleString()} تومان<br>
+            👤 سهم کارکرد (۵۰٪): ${workShare.toLocaleString()} تومان<br>
+            ${extraCredit > 0 ? `➕ مبالغ اضافه شده به طلب: ${extraCredit.toLocaleString()} تومان<br>` : ''}
+            💵 کل دریافتی‌ها و تسویه‌ها: ${paidAndDeducted.toLocaleString()} تومان<br>
+            📌 مانده طلب نهایی: <strong style="color:#0d47a1;">${debt.toLocaleString()} تومان</strong><br><br>
+            
+            <div class="flex">
+              <button onclick="addPayment('${b}')" class="btn-small" style="background:#2e7d32;">💵 تسویه حساب</button>
+              <button onclick="addCredit('${b}')" class="btn-small" style="background:#1565c0;">➕ اضافه به طلب / پاداش</button>
+              <button onclick="addPenalty('${b}')" class="btn-small" style="background:#c62828;">🚨 ثبت جریمه</button>
+            </div>
+            
+            <div style="margin-top:10px; border-top:1px solid #bbdefb; padding-top:5px;">
+              <button onclick="toggleVisibility('${worksContainerId}')" class="btn-small" style="background:#1976d2; width:100%;">👁️ مشاهده / مخفی کل کارهای ثبت‌شده (${barberWorksList.length})</button>
+              <div id="${worksContainerId}" class="hide" style="margin-top:5px;">
+                ${worksListHtml}
+              </div>
+            </div>
+
+            <div style="margin-top:10px; border-top:1px solid #bbdefb; padding-top:5px;">
+              <button onclick="toggleVisibility('${paymentsContainerId}')" class="btn-small" style="background:#0288d1; width:100%;">👁️ مشاهده / مخفی سوابق مالی و جریمه‌ها (${barberPayments.length})</button>
+              <div id="${paymentsContainerId}" class="hide" style="margin-top:5px;">
+                ${paymentsListHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <button onclick="renderManagerPending()" class="btn-small" style="background:#555;">🔙 بازگشت به داشبورد</button>
+        <div class="card" style="background:#e3f2fd; border: 2px solid #1565c0; padding:15px; margin-top:10px;">
+          <h2 style="color:#0d47a1; margin-top:0;">🌍 کارکرد کلی (سابقه کل از ابتدا)</h2>
+          
+          <div style="background:#1565c0; color:white; padding:12px; border-radius:10px; margin-bottom:15px; text-align:right;">
+            <strong style="font-size:16px;">📊 آمار کلی و مالی صندوق از ابتدا:</strong><br><br>
+            ✂️ <strong>تعداد کل خدمات ارائه شده:</strong> ${totalServicesCount}<br>
+            💰 <strong>فروش کل سالن:</strong> ${totalMoney.toLocaleString()} تومان<hr style="border-color:rgba(255,255,255,0.3);">
+            👤 <strong>مجموع کل سهم آرایشگران (۵۰٪):</strong> ${(totalMoney * 0.5).toLocaleString()} تومان<br>
+            🏢 <strong>مجموع کل سهم سالن (۵۰٪):</strong> ${(totalMoney * 0.5).toLocaleString()} تومان
+          </div>
+
+          <h4 style="text-align:right; margin-bottom:10px; color:#0d47a1;">📋 وضعیت حساب و مانده طلب کلی آرایشگران:</h4>
+          ${barbersOverallHtml}
+
+          <!-- گزارش بازه‌ای تاریخ -->
+          <div class="card" style="background:#fff8e1; border:2px solid #ffa000; margin-top:15px;">
+            <h3 style="color:#ff6f00;">📅 گزارش بازه‌ای تاریخ (جستجوی پیشرفته)</h3>
+            <select id="mgrBarberSelect" style="margin-bottom:8px;">${barberOptions}</select>
+            <input type="text" id="mgrFromDate" placeholder="از تاریخ">
+            <input type="text" id="mgrToDate" placeholder="تا تاریخ">
+            <button onclick="showManagerDateReport()" style="background:#ff8f00;">🔍 محاسبه کارکرد بازه</button>
+            <div id="mgrDateReportResult"></div>
+          </div>
+        </div>
+      `;
+
+      $("#mgrFromDate").persianDatepicker({ format: "YYYY/MM/DD" });
+      $("#mgrToDate").persianDatepicker({ format: "YYYY/MM/DD" });
+
+    } catch(e) {
+      container.innerHTML = `<div class="error">❌ خطا: ${e.message}<br><button onclick="openOverallReport()">تلاش مجدد</button></div>`;
+    }
+  }
+
+  async function showManagerDateReport() {
+    const selectedBarber = document.getElementById("mgrBarberSelect").value;
+    const from = document.getElementById("mgrFromDate").value;
+    const to = document.getElementById("mgrToDate").value;
+    const resultBox = document.getElementById("mgrDateReportResult");
+
+    if (!from || !to) {
+      alert("لطفاً تاریخ شروع و پایان را انتخاب کنید");
+      return;
+    }
+
+    const f = normalizeDate(from);
+    const t = normalizeDate(to);
+
+    const allApproved = await getAllWorks("approved");
+    const filtered = allApproved.filter(w => {
+      const matchBarber = (selectedBarber === "all" || w.barber === selectedBarber);
+      const wDate = normalizeDate(w.date);
+      return matchBarber && wDate >= f && wDate <= t;
+    });
+
+    let total = 0, count = 0;
+    filtered.forEach(w => { total += w.total; count += w.services.length; });
+
+    resultBox.innerHTML = `
+      <hr style="border-color:#ffe082;">
+      <div class="card" style="background:#ffffff; border:1px solid #ffe082; text-align:right;">
+        📌 <strong>نتیجه گزارش (${selectedBarber === "all" ? "همه آرایشگرها" : selectedBarber}):</strong><br>
+        📅 از ${from} تا ${to}<br><br>
+        ✂️ تعداد خدمات: ${count}<br>
+        💰 فروش کل: ${total.toLocaleString()} تومان<br>
+        👤 سهم آرایشگر (۵۰٪): ${(total * 0.5).toLocaleString()} تومان<br>
+        🏢 سهم سالن (۵۰٪): ${(total * 0.5).toLocaleString()} تومان
+      </div>
+    `;
+  }
+
+  async function updateBarberHeader() {
+    const today = new Date().toLocaleDateString("fa-IR");
+    const allWorks = await getBarberWorks(currentUser.name, "approved");
+    const todayWorks = allWorks.filter(w => w.date === today);
+    const todayMoney = todayWorks.reduce((sum, w) => sum + w.total, 0);
+
+    const pendingWorks = await getBarberWorks(currentUser.name, "pending");
+    const todayPendingWorks = pendingWorks.filter(w => w.date === today);
+    const pendingClientsCount = todayPendingWorks.length;
+    const pendingTotalAmount = todayPendingWorks.reduce((sum, w) => sum + (w.total || 0), 0);
+
+    const headerElem = document.getElementById("barberHeaderCard");
+    if (headerElem) {
+      headerElem.innerHTML = `
+        👋 سلام ${currentUser.name}<br><br>
+        📅 ${today}<hr style="border-color:#ffe0b2;">
+        👤 کارهای تأییدشده امروز: ${todayWorks.length}<br>
+        💰 فروش تأییدشده امروز: ${todayMoney.toLocaleString()} تومان
+      `;
+    }
+
+    const pendingCardElem = document.getElementById("barberPendingCard");
+    if (pendingCardElem) {
+      pendingCardElem.innerHTML = `
+        <h4 style="margin-top:0; color:#e65100;">⏳ موارد در انتظار تأیید مدیر (امروز)</h4>
+        👥 <strong>تعداد مشتریان در انتظار:</strong> ${pendingClientsCount} نفر<br>
+        💰 <strong>مجموع مبلغ در انتظار:</strong> ${pendingTotalAmount.toLocaleString()} تومان
+      `;
+    }
+  }
+
+  async function loadBarber() {
+    const container = document.getElementById("barberContent");
+    container.innerHTML = '<div class="loading">⏳ در حال بارگذاری...</div>';
+    try {
+      const services = await getServices();
+      const today = new Date().toLocaleDateString("fa-IR");
+      
+      const allWorks = await getBarberWorks(currentUser.name, "approved");
+      const todayWorks = allWorks.filter(w => w.date === today);
+      const todayMoney = todayWorks.reduce((sum, w) => sum + w.total, 0);
+
+      const pendingWorks = await getBarberWorks(currentUser.name, "pending");
+      const todayPendingWorks = pendingWorks.filter(w => w.date === today);
+      const pendingClientsCount = todayPendingWorks.length;
+      const pendingTotalAmount = todayPendingWorks.reduce((sum, w) => sum + (w.total || 0), 0);
+
+      const totalMoneyAll = allWorks.reduce((sum, w) => sum + w.total, 0);
+      const shareAll = totalMoneyAll * 0.5;
+      
+      const paymentsAll = await getPayments(currentUser.name);
+      
+      let totalPaidAll = 0;
+      let totalCreditAll = 0;
+      
+      paymentsAll.forEach(p => {
+        if (p.type === "credit") totalCreditAll += p.amount;
+        else if (p.type === "penalty") totalPaidAll += Math.abs(p.amount);
+        else totalPaidAll += p.amount;
+      });
+
+      const totalDebtAll = (shareAll + totalCreditAll) - totalPaidAll;
+
+      let paymentsListHtml = "";
+      if (paymentsAll.length > 0) {
+        paymentsAll.forEach(p => {
+          let amountText = "";
+          let styleColor = "";
+
+          if (p.type === "credit") {
+            amountText = `➕ اضافه به طلب/پاداش: ${p.amount.toLocaleString()} تومان ${p.reason ? '(' + p.reason + ')' : ''}`;
+            styleColor = `color: #1565c0; font-weight: bold;`;
+          } else if (p.type === "penalty") {
+            amountText = `🚨 جریمه: ${Math.abs(p.amount).toLocaleString()} تومان ${p.reason ? '(' + p.reason + ')' : ''}`;
+            styleColor = `color: #d32f2f; font-weight: bold;`;
+          } else {
+            amountText = `💵 دریافتی/تسویه: ${p.amount.toLocaleString()} تومان`;
+            styleColor = `color: #2e7d32;`;
+          }
+
+          paymentsListHtml += `
+            <div style="font-size:12px; background:#fff; padding:6px; margin:4px 0; border-radius:5px; text-align:right; border:1px solid #c8e6c9;">
+              <span style="${styleColor}">${amountText}</span> 
+              <span style="color:#666; font-size:11px;">(${p.date || 'بدون تاریخ'})</span>
+            </div>
+          `;
+        });
+      } else {
+        paymentsListHtml = "<div style='font-size:12px; color:#777;'>هیچ دریافتی یا تراکنشی ثبت نشده است</div>";
+      }
+
+      let html = `
+        <div class="card" id="barberHeaderCard" style="background:#fff3e0; border:1px solid #ffe0b2; color:#e65100;">
+          👋 سلام ${currentUser.name}<br><br>
+          📅 ${today}<hr style="border-color:#ffe0b2;">
+          👤 کارهای تأییدشده امروز: ${todayWorks.length}<br>
+          💰 فروش تأییدشده امروز: ${todayMoney.toLocaleString()} تومان
+        </div>
+
+        <div class="card" id="barberPendingCard" style="background:#ffe0b2; border: 2px solid #fb8c00; text-align:right;">
+          <h4 style="margin-top:0; color:#e65100;">⏳ موارد در انتظار تأیید مدیر (امروز)</h4>
+          👥 <strong>تعداد مشتریان در انتظار:</strong> ${pendingClientsCount} نفر<br>
+          💰 <strong>مجموع مبلغ در انتظار:</strong> ${pendingTotalAmount.toLocaleString()} تومان
+        </div>
+
+        <h3 style="color:#33691e;">📝 ثبت خدمت جدید</h3>
+      `;
+      
+      services.forEach((s, i) => {
+        html += `
+          <div class="service-counter-card">
+            <div class="service-info">
+              <input type="checkbox" id="serviceChk${i}" class="service-checkbox" onchange="toggleServiceCheck('serviceChk${i}', 'serviceQty${i}')">
+              <div>
+                <strong>${s.name}</strong>
+                <span>${s.price.toLocaleString()} تومان</span>
+              </div>
+            </div>
+            <div class="qty-controls">
+              <button type="button" class="qty-btn qty-btn-minus" onclick="minusQty('serviceChk${i}', 'serviceQty${i}')">-</button>
+              <input type="number" id="serviceQty${i}" class="qty-input" value="0" min="1" disabled>
+              <button type="button" class="qty-btn qty-btn-plus" onclick="addQty('serviceChk${i}', 'serviceQty${i}')">+</button>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `
+        <div class="card" style="background:#f9fbe7; border:1px solid #e6ee9c;">
+          <label><strong style="color:#827717;">➕ مبلغ اضافی / انعام (تومان):</strong></label>
+          <input type="number" id="extraAmount" placeholder="مثلاً ۵۰,۰۰۰" style="margin-top:8px;">
+        </div>
+        <button onclick="saveWork()" style="background:#558b2f;">✅ ثبت کار</button>
+        
+        <hr style="margin:20px 0; border:1px dashed #bbb;">
+
+        <div class="card" style="background:#e8f5e9; border:2px solid #4caf50; text-align:right;">
+          <h3 style="color:#2e7d32;">📋 حساب کلی شما (سابقه کل)</h3>
+          💰 <strong>کل فروش کارکرد شما:</strong> ${totalMoneyAll.toLocaleString()} تومان<br>
+          👤 <strong>کل سهم شما از کارکرد (۵۰٪):</strong> ${shareAll.toLocaleString()} تومان<br>
+          ${totalCreditAll > 0 ? `➕ <strong>مبالغ اضافه شده به طلب:</strong> ${totalCreditAll.toLocaleString()} تومان<br>` : ''}
+          💵 <strong>کل تسویه‌ها و پرداختی‌ها:</strong> ${totalPaidAll.toLocaleString()} تومان<hr style="border-color:#a5d6a7;">
+          📌 <strong style="font-size:16px; color:#1b5e20;">طلب کل شما: ${totalDebtAll.toLocaleString()} تومان</strong>
+          
+          <div style="margin-top:10px; border-top:1px solid #c8e6c9; padding-top:5px;">
+            <button onclick="toggleVisibility('barberPaymentsHistory')" class="btn-small" style="background:#388e3c; width:100%;">👁️ نمایش / مخفی‌سازی سوابق مالی و جریمه‌ها (${paymentsAll.length})</button>
+            <div id="barberPaymentsHistory" class="hide" style="margin-top:5px;">
+              ${paymentsListHtml}
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="background:#e0f2f1; border:2px solid #26a69a;">
+          <h3 style="color:#00695c;">📅 گزارش بازه‌ای تاریخ</h3>
+          <input type="text" id="fromDate" placeholder="از تاریخ">
+          <input type="text" id="toDate" placeholder="تا تاریخ">
+          <button onclick="showDateReport()" style="background:#00796b;">نمایش کارکرد بازه‌ای</button>
+          <div id="dateReportResult"></div>
+        </div>
+
+        <div class="card" style="background:#efebe9; border:2px solid #8d6e63;">
+          <h3 style="color:#4e342e;">📊 گزارش امروز</h3>
+          <button onclick="barberReport('day')" style="background:#6d4c41;">نمایش امروز</button>
+          <div id="barberReport"></div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      $("#fromDate").persianDatepicker({ format: "YYYY/MM/DD" });
+      $("#toDate").persianDatepicker({ format: "YYYY/MM/DD" });
+
+      if (!realtimeChannel) {
+        realtimeChannel = supabaseClient
+          .channel('public:works_barber')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'works' }, () => {
+            updateBarberHeader();
+          })
+          .subscribe();
+      }
+    } catch(e) {
+      container.innerHTML = `<div class="error">❌ خطا: ${e.message}<br><button onclick="loadBarber()">تلاش مجدد</button></div>`;
+    }
+  }
+
+  async function barberReport(type) {
+    await updateBarberHeader();
+    const today = new Date().toLocaleDateString("fa-IR");
+    const works = await getBarberWorks(currentUser.name, "approved");
+    const data = type === "day" ? works.filter(w => w.date === today) : works;
+    
+    let total = 0, count = 0;
+    data.forEach(w => { total += w.total; count += w.services.length; });
+    const share = total * 0.5;
+    
+    const payments = await getPayments(currentUser.name);
+    const filteredPayments = type === "day" ? payments.filter(p => p.date === today) : payments;
+    
+    let paid = 0, credit = 0;
+    filteredPayments.forEach(p => {
+      if (p.type === "credit") credit += p.amount;
+      else if (p.type === "penalty") paid += Math.abs(p.amount);
+      else paid += p.amount;
+    });
+
+    const debt = (share + credit) - paid;
+    
+    document.getElementById("barberReport").innerHTML = `
+      <div class="card" style="background:#ffffff; border:1px solid #d7ccc8; margin-top:10px; text-align:right;">
+        📊 ${type === "day" ? "گزارش امروز" : "گزارش کل"}<br><br>
+        ✂️ تعداد خدمات: ${count}<br>
+        💰 فروش: ${total.toLocaleString()} تومان<br>
+        👤 سهم آرایشگر (۵۰٪): ${share.toLocaleString()} تومان<br>
+        ${credit > 0 ? `➕ اضافه به طلب: ${credit.toLocaleString()} تومان<br>` : ''}
+        💵 دریافتی/کسورات: ${paid.toLocaleString()} تومان<br>
+        📌 طلب: ${debt.toLocaleString()} تومان
+      </div>
+    `;
+  }
+
+  async function showDateReport() {
+    await updateBarberHeader();
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
+    const resultBox = document.getElementById("dateReportResult");
+
+    if (!from || !to) { 
+      alert("لطفاً هر دو تاریخ شروع و پایان را انتخاب کنید"); 
+      return; 
+    }
+    
+    const f = normalizeDate(from), t = normalizeDate(to);
+    
+    const works = await getBarberWorks(currentUser.name, "approved");
+    const filteredWorks = works.filter(w => {
+      const workDate = normalizeDate(w.date);
+      return workDate >= f && workDate <= t;
+    });
+    
+    const payments = await getPayments(currentUser.name);
+    const filteredPayments = payments.filter(p => {
+      const paymentDate = normalizeDate(p.date);
+      return paymentDate >= f && paymentDate <= t;
+    });
+
+    let total = 0, count = 0, html = "";
+    filteredWorks.forEach(w => {
+      total += w.total;
+      count += w.services.length;
+      html += `<div class="card" style="background:#ffffff; border:1px solid #b2dfdb;">📅 ${w.date} - ⏰ ${w.time}<br>✂️ ${w.services.map(s=>s.name).join(" - ")}<br>💰 ${w.total.toLocaleString()} تومان</div>`;
+    });
+    
+    const share = total * 0.5;
+    
+    let paid = 0, credit = 0;
+    filteredPayments.forEach(p => {
+      if (p.type === "credit") credit += p.amount;
+      else if (p.type === "penalty") paid += Math.abs(p.amount);
+      else paid += p.amount;
+    });
+
+    const debt = (share + credit) - paid;
+
+    resultBox.innerHTML = `
+      <hr style="border-color:#b2dfdb;">
+      <div class="card" style="background:#e0f2f1; border:1px solid #80cbd3; text-align:right;">
+        📌 <strong>نتیجه گزارش (${from} تا ${to}):</strong><br><br>
+        ✂️ تعداد خدمات: ${count}<br>
+        💰 فروش کل: ${total.toLocaleString()} تومان<br>
+        👤 سهم آرایشگر (۵۰٪): ${share.toLocaleString()} تومان<br>
+        ${credit > 0 ? `➕ اضافه به طلب در این بازه: ${credit.toLocaleString()} تومان<br>` : ''}
+        💵 دریافتی/کسورات در این بازه: ${paid.toLocaleString()} تومان<hr style="border-color:#80cbd3;">
+        📌 <strong>مانده طلب در این بازه: ${debt.toLocaleString()} تومان</strong>
+      </div>
+      ${filteredWorks.length > 0 ? html : '<div class="card" style="background:#ffffff;">هیچ کار تأییدشده‌ای در این بازه یافت نشد.</div>'}
+    `;
+  }
+</script>
+</body>
+</html>
